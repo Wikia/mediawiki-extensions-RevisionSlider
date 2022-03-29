@@ -41,11 +41,22 @@ $.extend( DiffPage.prototype, {
 
 		$( 'table.diff[data-mw="interface"]' ).addClass( 'mw-revslider-diff-loading' );
 
+		/**
+		 * Fandom change - start
+		 * Base implementation doesn't support canonical urls
+		 * eg. `/wiki/ArticleTitle?type=revision&diff=213&oldid=211, because
+		 * it was rewriting this url to `index.php` like url which was missing
+		 * `title` query param and caused load of Main page.
+		 *
+		 * @author t-tomalak
+		 * @issue GPUCP-252
+		 */
 		this.lastRequest = $.ajax( {
-			url: mw.util.wikiScript( 'index' ),
+			url: mw.util.getUrl(),
 			data: data,
 			tryCount: 0
 		} );
+		/** Fandom change - end */
 		// Don't chain, so lastRequest is a jQuery.jqXHR object
 		this.lastRequest.then( function ( data2 ) {
 			var $data = $( data2 ),
@@ -158,14 +169,24 @@ $.extend( DiffPage.prototype, {
 	 * @return {string}
 	 */
 	getStateUrl: function ( diff, oldid ) {
-		var url = mw.util.wikiScript( 'index' ) + '?diff=' + diff + '&oldid=' + oldid,
-			params = this.getExtraDiffPageParams();
-		if ( Object.keys( params ).length > 0 ) {
-			Object.keys( params ).forEach( function ( key ) {
-				url += '&' + key + '=' + params[ key ];
-			} );
-		}
-		return url;
+		/**
+		 * Fandom change - start
+		 * Base implementation was pushing urls which weren't
+		 * canonical urls eg. `index.php?type=revision&oldid=143...`,
+		 * also they didn't have `title` params which after refresh or
+		 * "copy and open" in new tab, would fail to render
+		 *
+		 * @author t-tomalak
+		 * @issue GPUCP-252
+		 */
+		var params = Object.assign(
+			this.getExtraDiffPageParams(),
+			{ diff, oldid }
+		);
+		var query = $.param( params );
+
+		return `${ mw.util.getUrl( null ) }?${ query }`;
+		/** Fandom change - end */
 	},
 
 	/**
